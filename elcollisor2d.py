@@ -14,7 +14,7 @@ class particula:
     #rng     = np.random.default_rng(seed=85420)
     #dt      = 0.001
     #dt      = 0.001
-    dt      = 0.1
+    dt      = 0.01
     xposit  = float()
     yposit  = float()
     xfposit = float()
@@ -191,7 +191,7 @@ def radiuscheck(plist): #verifica se algum par de posits está na dangerzone; gu
                 colparts.append(ctuple1)                         #is lesser or equal than sum of  
                 colparts.append(ctuple2)                         #radius, collision is a thing.
                 colisor(plist[i], plist[j])  
-                #print("Collision done! Parts", i, "and", j, "just colided!")
+                print("Collision! Parts", i, "and", j, "just colided!")
             #else:
                 #print("collisionavoided, fetching next pair")
 
@@ -202,43 +202,115 @@ def getparticleposits(particlelist, time):
     for i in range(0, updates):
         zetta = -1
         print("running for timeframe", i)
+        radiuscheck(particlelist)
         for particle in particlelist:
             #print("running for timeframe", i)
             zetta = zetta + 1
             xposits[zetta].append(particle.xposit)
             yposits[zetta].append(particle.yposit)
-            radiuscheck(particlelist)
             particle.updatecondition()
     return xposits, yposits
 
+def positfixer(particlelist, seed):
+    """
+    POSITFIXER! A solução para todas as suas partículas criadas
+    perto demais!
+    
+    Funcionamento: 
+        Roda por todas as partículas procurando quem 
+    nasceu perto demais. Ao detectar particulas próximas
+    o suficiente para colidir, refaz elas. Feito para rodar
+    até as partículas estarem em posição satisfatória. 
+    
+    """
+    #Inicialização
+    incolisionrange = list()
+    donechecked     = list()
+    try:
+        randomseeder = np.random.default_rng(seed)
+    except:
+        randomseeder = np.random.default_rng(123456)
+    #randomseeder = np.random.default_rng(123456)    
+    #Check inicial
+    for i in range(len(particlelist)):
+        for j in range(len(particlelist)):
+            if [i, j] or [j, i] in donechecked or j == i: 
+                continue
+            coldist = particlelist[i].radius + particlelist[j].radius
+            actdist = norma(particlelist[i].gpos + particlelist[j].gpos)
+            if actdist <= coldist:
+                incolisionrange.append([i, j])
+            donechecked.append([i, j])
+            donechecked.append([j, i])
+            
+    #Se houver partículas em colisão, ele rerrola elas
+    if len(incolisionrange) > 0:
+        for vec in incolisionrange:
+            seed = randomseeder.integers(800, 10000)
+            particlelist[vec[0]] = particula(seed)
+            particlelist[vec[1]] = particula(seed)
+    #Clean up!
+    incolisionrange.clear()
+    donechecked.clear()
+    
+    #Check final
+    for i in range(len(particlelist)):
+        for j in range(len(particlelist)):
+            if [i, j] or [j, i] in donechecked or j == i: 
+                continue
+            coldist = particlelist[i].radius + particlelist[j].radius
+            actdist = norma(particlelist[i].gpos + particlelist[j].gpos)
+            if actdist <= coldist:
+                incolisionrange.append([i, j])
+            donechecked.append([i, j])
+            donechecked.append([j, i])
+            
+    if len(incolisionrange) > 0: #Não funcionou? TRY TRY AGAIN!
+        positfixer(particlelist, randomseeder.integers(800, 10000)) #Usa número previsivelmente aleatório como próxima tentativa
+    
+    else:
+        print("posições concertadas com sucesso!")
+
+numparticles = 5 #limita numero de particulas criadas
+
 particlelist = list()
-for i in range(5):
+for i in range(numparticles):
     particlelist.append(particula())
+
+positfixer(particlelist, 123456)
 
 runtime = 20
 #dt = 0.001
-dt = 0.1
+dt = 0.01
 fig = plt.figure()
 ax = fig.add_subplot()
-ax.set(xlim=(-100, 100))                                 #*seta limites do gráfico.
+ax.set(xlim=(-100, 100))
 ax.set(ylim=(-100, 100))
-scatter = ax.scatter([],[]) 
 
 xdata, ydata = getparticleposits(particlelist, runtime)
 
-def update(i, scatter, xposits, yposits):
-    ax.clear()
+#def update(i, scatter, xposits, yposits):
+def update(i, xposits, yposits):
     xintime = list()
     yintime = list()
+    ax.clear()
     for xposit, yposit in zip(xposits, yposits):  #goes through lines and particles
-          xintime.append(xposit[i]) # Contem posições para tempo determinado
-          yintime.append(yposit[i])
+        #print(xposit[i])
+        #print(yposit[i])
+        xintime.append(xposit[i]) # Contem posições para tempo determinado
+        yintime.append(yposit[i])
+    #scatter.set_offsets(np.c_[xintime, yintime])
+    ax.set(xlim=(-100, 100))
+    ax.set(ylim=(-100, 100))
     ax.scatter(xintime, yintime)
+    print(xintime)
+    print(yintime)
     xintime.clear()
     yintime.clear()
-    
+    print(xintime)
+    print(yintime)
 
     
 #anim = FuncAnimation (fig, update, frames= range(1, int(20/dt), 200), fargs = (scatter, ydata, xdata), interval = 1, blit=True)
-anim = FuncAnimation (fig, update, frames= range(1, int(20/dt)), fargs = (scatter, ydata, xdata), interval = 1, blit=False)
+anim = FuncAnimation (fig, update, frames= range(1, int(20/dt), 200), fargs = ( xdata, ydata), interval = 1, blit=False)
 plt.show()
