@@ -11,10 +11,8 @@ import matplotlib.pyplot as plt
 
 class particula:
     global rng
-    #rng     = np.random.default_rng(seed=85420)
-    #dt      = 0.001
-    #dt      = 0.001
-    dt      = 0.1
+    rng     = np.random.default_rng(seed=85420)
+    dt      = 0.01
     xposit  = float()
     yposit  = float()
     xfposit = float()
@@ -35,18 +33,18 @@ class particula:
         #    self.rng     = np.random.default_rng(seed=seed)
         #except:
         #    self.rng     = np.random.default_rng(seed=85420)
-        self.rng     = np.random.default_rng(seed=85420)
-        self.xposit   = (21 - (-20)) * self.rng.random() + (-20)
-        self.yposit   = (21 - (-20)) * self.rng.random() + (-20)
-        self.xvel     = (2 - (-2)) * self.rng.random() + (-2)
-        self.yvel     = (2 - (-2)) * self.rng.random() + (-2)
-        self.xacc     = (1 - (-1)) * self.rng.random() + (-1)
-        self.yacc     = (1 - (-1)) * self.rng.random() + (-1)
+        #self.rng     = np.random.default_rng(seed=85420)
+        self.xposit   = (21 - (-20)) * rng.random() + (-20)
+        self.yposit   = (21 - (-20)) * rng.random() + (-20)
+        self.xvel     = (2 - (-2)) * rng.random() + (-2)
+        self.yvel     = (2 - (-2)) * rng.random() + (-2)
+        self.xacc     = (1 - (-1)) * rng.random() + (-1)
+        self.yacc     = (1 - (-1)) * rng.random() + (-1)
         self.xfposit  = self.xposit + self.xvel * self.dt
         self.yfposit  = self.yposit + self.yvel * self.dt
-        self.ptype    = self.rng.integers(low = 1, high = 5)
+        self.ptype    = rng.integers(low = 1, high = 5)
         self.mass     = float(self.ptype)
-        self.radius   = (0.5 - (0.1)) * self.rng.random() + (0.1)
+        self.radius   = (1 - (0.5)) * rng.random() + (0.5)
         self.gpos     = [self.xposit, self.yposit]
         self.gfpos    = [self.xfposit, self.yfposit]
         self.gvel     = [self.xvel, self.yvel]
@@ -76,7 +74,7 @@ class particula:
         self.xvel    = self.xvel + self.xacc * self.dt
         self.yvel    = self.yvel + self.yacc * self.dt
         self.gpos    = np.array([self.xposit, self.yposit])
-        self.gfpos   = [self.xfposit, self.yfposit]
+        self.gfpos   = np.array([self.xfposit, self.yfposit])
         self.gvel    = np.array([self.xvel, self.yvel])
         self.wallcolide()
         self.updategrid()
@@ -211,34 +209,35 @@ def getparticleposits(particlelist, time):
             particle.updatecondition()
     return xposits, yposits
 
+numparticles = 10
 particlelist = list()
-for i in range(5):
+for i in range(numparticles):
     particlelist.append(particula())
 
-runtime = 20
+runtime = 60
 #dt = 0.001
-dt = 0.1
+dt = 0.01
 fig = plt.figure()
 ax = fig.add_subplot()
-ax.set(xlim=(-100, 100))                                 #*seta limites do gráfico.
-ax.set(ylim=(-100, 100))
-scatter = ax.scatter([],[]) 
 
 xdata, ydata = getparticleposits(particlelist, runtime)
 
-def update(i, scatter, xposits, yposits):
+def update(i, xposits, yposits):
     ax.clear()
     xintime = list()
     yintime = list()
     for xposit, yposit in zip(xposits, yposits):  #goes through lines and particles
           xintime.append(xposit[i]) # Contem posições para tempo determinado
           yintime.append(yposit[i])
-    ax.scatter(xintime, yintime)
-    xintime.clear()
-    yintime.clear()
+    ax.set(xlim=(-100, 100))                                 
+    ax.set(ylim=(-100, 100))
+    for i in range(len(xintime)):
+        ax.scatter(xintime[i], yintime[i])
+#    xintime.clear()
+#    yintime.clear()
     
 
     
 #anim = FuncAnimation (fig, update, frames= range(1, int(20/dt), 200), fargs = (scatter, ydata, xdata), interval = 1, blit=True)
-anim = FuncAnimation (fig, update, frames= range(1, int(20/dt)), fargs = (scatter, ydata, xdata), interval = 1, blit=False)
+anim = FuncAnimation (fig, update, frames= range(1, int(runtime/dt), 100), fargs = (xdata, ydata), interval = 1, blit=False)
 plt.show()
