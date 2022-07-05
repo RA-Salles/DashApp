@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 class particula:
     global rng
     rng     = np.random.default_rng(seed=85420)
-    dt      = 0.01
+    dt      = 0.001
     xposit  = float()
     yposit  = float()
     xfposit = float()
@@ -38,8 +38,8 @@ class particula:
         self.yposit   = (21 - (-20)) * rng.random() + (-20)
         self.xvel     = (2 - (-2)) * rng.random() + (-2)
         self.yvel     = (2 - (-2)) * rng.random() + (-2)
-        self.xacc     = (1 - (-1)) * rng.random() + (-1)
-        self.yacc     = (1 - (-1)) * rng.random() + (-1)
+        self.xacc     = (5 - (-5)) * rng.random() + (-5)
+        self.yacc     = (5 - (-5)) * rng.random() + (-5)
         self.xfposit  = self.xposit + self.xvel * self.dt
         self.yfposit  = self.yposit + self.yvel * self.dt
         self.ptype    = rng.integers(low = 1, high = 5)
@@ -50,6 +50,7 @@ class particula:
         self.gvel     = [self.xvel, self.yvel]
         self.gacc     = [self.xacc, self.yacc]
         self.updategrid()
+        
     def updategrid(self):
         if self.xposit > 0 and self.yposit > 0:
             self.gpoint = 1
@@ -112,6 +113,50 @@ class particula:
                 yposits[zetta].append(particle.yposit)
                 particle.updatecondition()
         return xposits, yposits
+
+class mola:
+    k = float()
+    
+    def __init__(self):
+        
+        self.rng   = np.random.default_rng(124237) # Provenha seed ou morra tentando!
+        self.centerx   = (16 - 15) * self.rng.random() + 15
+        self.centery   = (16 - 15) * self.rng.random() + 15
+        self.konstantx = (30 - 15) * self.rng.random() + 15
+        self.konstanty = (30 - 15) * self.rng.random() + 15
+        
+        
+    def restaurador(self, part):
+        """
+        Função restaurador: 
+            Calcula influência da força restauradora
+            da 'mola' sob uma partícula. 
+        
+            *Funcionamento*
+                Utilizando as constantes geradas pelo rng, calcula
+                segundo a lei de hooke a força gerada. Faz isso 
+                separadamente por vetor. Posteriormente, une variáveis
+                a vetor único, que é retornado.
+            *Uso*
+                Após obter o retorno do vetor de influência, basta
+                somar a aceleração do dado instante à aceleração da partícula
+                no dado momento, o que simula toscamente a soma das forças
+                gerando uma dada força resultante. A maneira correta, todavia,
+                é gerar uma função para calcular a soma das forças atuando
+                na partícula para então descobrir a resultante. Do contrá-
+                rio, é possível que partícula gradativamente salte distân-
+                cias progressivamente mais distantes da mola.
+                
+        """
+        
+        vec1 = np.array(part.gpos) #Vetor1 assignado a posicao da particula em 2d
+        distx = self.centerx - vec1[0]            #TASK1
+        disty = self.centery - vec1[1]            #TASK1
+        forcex = -1*self.konstantx*distx
+        forcey = -1*self.konstanty*disty
+        accx, accy = forcex/part.mass, forcey/part.mass
+        vecacc = np.array([accx, accy])
+        return vecacc
     
 def norma(vec1, vec2):
     vec3 = np.array(vec1) - np.array(vec2)
@@ -170,13 +215,17 @@ def distget(x1, x2):
 
 def radiuscheck(plist): #verifica se algum par de posits está na dangerzone; guarda partículas em perigo para checagem de colisão
     colparts = list() #list of already collided particles. Enables ignoring in special conditions
+    zetta = -1
     for i in range(len(plist)):
+        j = i + 1
         for j in range(len(plist)):
+            zetta = zetta + 1
             cdist   = plist[i].radius + plist[j].radius
             ctuple1 = (i, j)
             ctuple2 = (j, i)
             if plist[i].gpoint != plist[i].gpoint: #too far away to ever colide
                 colparts.append(ctuple1)
+                #colparts[zetta] = tuple1
                 colparts.append(ctuple2)
                 continue
             if i == j: #jumps same particle collision
@@ -193,7 +242,85 @@ def radiuscheck(plist): #verifica se algum par de posits está na dangerzone; gu
             #else:
                 #print("collisionavoided, fetching next pair")
 
-def getparticleposits(particlelist, time):
+def positfixer(particlelist):
+    """
+    POSITFIXER! A solução para todas as suas partículas criadas
+    perto demais!
+    
+    Funcionamento: 
+        Roda por todas as partículas procurando quem 
+    nasceu perto demais. Ao detectar particulas próximas
+    o suficiente para colidir, refaz elas. Feito para rodar
+    até as partículas estarem em posição satisfatória. 
+    
+    """
+    #Inicialização
+    incolisionrange = list()
+    donechecked     = list()
+    #try:
+    #    randomseeder = np.random.default_rng(seed)
+    #except:
+    #randomseeder = np.random.default_rng(123456)
+        
+    #Check inicial
+    for i in range(len(particlelist)):
+        for j in range(len(particlelist)):
+            if [i, j] or [j, i] in donechecked or j == i: 
+                continue
+            coldist = particlelist[i].radius + particlelist[j].radius
+            actdist = norma(particlelist[i].gpos + particlelist[j].gpos)
+            if actdist <= coldist:
+                incolisionrange.append([i, j])
+            donechecked.append([i, j])
+            donechecked.append([j, i])
+            
+    #Se houver partículas em colisão, ele rerrola elas
+    if len(incolisionrange) > 0:
+        for vec in incolisionrange:
+            #seed = randomseeder.integers(800, 10000)
+            particlelist[vec[0]] = particula()
+            particlelist[vec[1]] = particula()
+    #Clean up!
+    incolisionrange.clear()
+    donechecked.clear()
+    
+    #Check final
+    for i in range(len(particlelist)):
+        for j in range(len(particlelist)):
+            if [i, j] or [j, i] in donechecked or j == i: 
+                continue
+            coldist = particlelist[i].radius + particlelist[j].radius
+            actdist = norma(particlelist[i].gpos + particlelist[j].gpos)
+            if actdist <= coldist:
+                incolisionrange.append([i, j])
+            donechecked.append([i, j])
+            donechecked.append([j, i])
+            
+    if len(incolisionrange) > 0: #Não funcionou? TRY TRY AGAIN!
+        print("Particulas insatisfatorias detectadas. Tentando novamente.")
+        positfixer(particlelist)
+    
+    else:
+        print("posições concertadas com sucesso!")
+
+def forcesum(*args): 
+    """
+    Parameters
+    ----------
+    *args : vetores. Numpy array ou lista. Será transformado em array de qualquer forma.
+        forças vetoriais a serem somadas.
+
+    Returns
+    -------
+    resultvec : Numpy Array
+        Vetor Resultante.
+    """
+    resultvec = np.array([])
+    for forcevec in args:
+        resultvec = resultvec + np.array(forcevec)
+    return resultvec
+
+def getparticleposits(particlelist, time, umamola):
     xposits = [list() for _ in particlelist]
     yposits = [list() for _ in particlelist]
     updates = int(time/particlelist[0].dt)
@@ -205,22 +332,32 @@ def getparticleposits(particlelist, time):
             zetta = zetta + 1
             xposits[zetta].append(particle.xposit)
             yposits[zetta].append(particle.yposit)
-            radiuscheck(particlelist)
+            radiuscheck(particlelist)                       #checa colisões
+            restauringforce = umamola.restaurador(particle) #checa elasticidade de centro
+            particle.updateacc(
+                forcesum(particle.gacc,
+                         restauringforce
+                         )
+                )
             particle.updatecondition()
     return xposits, yposits
 
-numparticles = 10
+centromola = mola()
+numparticles = 5
 particlelist = list()
 for i in range(numparticles):
     particlelist.append(particula())
 
-runtime = 60
+positfixer(particlelist)
+
+runtime = 20
 #dt = 0.001
-dt = 0.01
+dt = 0.001
 fig = plt.figure()
 ax = fig.add_subplot()
 
-xdata, ydata = getparticleposits(particlelist, runtime)
+
+xdata, ydata = getparticleposits(particlelist, runtime, centromola)
 
 def update(i, xposits, yposits):
     ax.clear()
@@ -231,13 +368,14 @@ def update(i, xposits, yposits):
           yintime.append(yposit[i])
     ax.set(xlim=(-100, 100))                                 
     ax.set(ylim=(-100, 100))
-    for i in range(len(xintime)):
-        ax.scatter(xintime[i], yintime[i])
-#    xintime.clear()
-#    yintime.clear()
+    #for i in range(len(xintime)): #Para colorir por tipo, adaptar essa parte da função para detectar tipo.
+    #    ax.scatter(xintime[i], yintime[i])
+    ax.scatter(xintime, yintime)
+    #xintime.clear()
+    #yintime.clear()
     
 
     
 #anim = FuncAnimation (fig, update, frames= range(1, int(20/dt), 200), fargs = (scatter, ydata, xdata), interval = 1, blit=True)
-anim = FuncAnimation (fig, update, frames= range(1, int(runtime/dt), 100), fargs = (xdata, ydata), interval = 1, blit=False)
+anim = FuncAnimation (fig, update, frames = range(1, int(runtime/dt), 200), fargs = (xdata, ydata), interval = 1, blit=False)
 plt.show()
