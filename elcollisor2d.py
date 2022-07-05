@@ -38,8 +38,10 @@ class particula:
         self.yposit   = (21 - (-20)) * rng.random() + (-20)
         self.xvel     = (2 - (-2)) * rng.random() + (-2)
         self.yvel     = (2 - (-2)) * rng.random() + (-2)
-        self.xacc     = (5 - (-5)) * rng.random() + (-5)
-        self.yacc     = (5 - (-5)) * rng.random() + (-5)
+        #self.xacc     = (5 - (-5)) * rng.random() + (-5)
+        #self.yacc     = (5 - (-5)) * rng.random() + (-5)
+        self.xacc     = 0
+        self.yacc     = 0
         self.xfposit  = self.xposit + self.xvel * self.dt
         self.yfposit  = self.yposit + self.yvel * self.dt
         self.ptype    = rng.integers(low = 1, high = 5)
@@ -315,7 +317,7 @@ def forcesum(*args):
     resultvec : Numpy Array
         Vetor Resultante.
     """
-    resultvec = np.array([])
+    resultvec = np.array([0,0])
     for forcevec in args:
         resultvec = resultvec + np.array(forcevec)
     return resultvec
@@ -356,7 +358,6 @@ dt = 0.001
 fig = plt.figure()
 ax = fig.add_subplot()
 
-
 xdata, ydata = getparticleposits(particlelist, runtime, centromola)
 
 def update(i, xposits, yposits):
@@ -377,5 +378,5 @@ def update(i, xposits, yposits):
 
     
 #anim = FuncAnimation (fig, update, frames= range(1, int(20/dt), 200), fargs = (scatter, ydata, xdata), interval = 1, blit=True)
-anim = FuncAnimation (fig, update, frames = range(1, int(runtime/dt), 200), fargs = (xdata, ydata), interval = 1, blit=False)
+anim = FuncAnimation (fig, update, frames = range(1, int(runtime/dt)), fargs = (xdata, ydata), interval = 1, blit=False)
 plt.show()
