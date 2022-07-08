@@ -28,8 +28,8 @@ class mola:
             self.rng   = np.random.default_rng(124237) # Provenha seed ou morra tentando!
         self.centerx   = (16 - 15) * self.rng.random() + 15
         self.centery   = (16 - 15) * self.rng.random() + 15
-        self.konstantx = (30 - 15) * self.rng.random() + 15
-        self.konstanty = (30 - 15) * self.rng.random() + 15
+        self.konstantx = (5 - 1) * self.rng.random() + 1
+        self.konstanty = (5 - 1) * self.rng.random() + 1
         
         
     def restaurador(self, part):
@@ -85,7 +85,7 @@ def gravidade(part1, part2):
     #return values obtained
     return vecacc1, vecacc2
         
-def resist(part1, part2): #TASK 3
+def resist(part1): #TASK 3
     
     pass
 

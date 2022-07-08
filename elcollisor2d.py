@@ -46,7 +46,7 @@ class particula:
         self.yfposit  = self.yposit + self.yvel * self.dt
         self.ptype    = rng.integers(low = 1, high = 5)
         self.mass     = float(self.ptype)
-        self.radius   = (1 - (0.5)) * rng.random() + (0.5)
+        self.radius   = (5 - (1)) * rng.random() + (1)
         self.gpos     = [self.xposit, self.yposit]
         self.gfpos    = [self.xfposit, self.yfposit]
         self.gvel     = [self.xvel, self.yvel]
@@ -122,10 +122,16 @@ class mola:
     def __init__(self):
         
         self.rng   = np.random.default_rng(124237) # Provenha seed ou morra tentando!
-        self.centerx   = (16 - 15) * self.rng.random() + 15
-        self.centery   = (16 - 15) * self.rng.random() + 15
+        #self.centerx   = (16 - 15) * self.rng.random() + 15
+        #self.centery   = (16 - 15) * self.rng.random() + 15
+        self.centerx   = 0
+        self.centery   = 0
         self.konstantx = (30 - 15) * self.rng.random() + 15
         self.konstanty = (30 - 15) * self.rng.random() + 15
+        #self.konstantx = (5 - 1) * self.rng.random() + 1
+        #self.konstanty = (5 - 1) * self.rng.random() + 1
+        #self.konstantx =  self.rng.random() 
+        #self.konstanty =  self.rng.random() 
         
         
     def restaurador(self, part):
@@ -154,8 +160,10 @@ class mola:
         vec1 = np.array(part.gpos) #Vetor1 assignado a posicao da particula em 2d
         distx = self.centerx - vec1[0]            #TASK1
         disty = self.centery - vec1[1]            #TASK1
-        forcex = -1*self.konstantx*distx
-        forcey = -1*self.konstanty*disty
+        #forcex = -1*self.konstantx*distx
+        #forcey = -1*self.konstanty*disty
+        forcex = self.konstantx*distx
+        forcey = self.konstanty*disty
         accx, accy = forcex/part.mass, forcey/part.mass
         vecacc = np.array([accx, accy])
         return vecacc
@@ -244,6 +252,27 @@ def radiuscheck(plist): #verifica se algum par de posits está na dangerzone; gu
             #else:
                 #print("collisionavoided, fetching next pair")
 
+def gravidade(part1, part2):
+    #def vals
+    kgrav = float() #TASK 2
+    vec1, vec2   = part1.gpos, part2.gpos
+    mass1, mass2 = part1.mass, part2.mass
+    
+    #calcs
+    distx        = abs(vec1[0] - vec2[0])
+    disty        = abs(vec1[1] - vec2[1])
+    forcex       = (mass1*mass2*kgrav)/distx**2
+    forcey       = (mass1*mass2*kgrav)/disty**2
+    accx1        = forcex/mass1
+    accx2        = forcex/mass2
+    accy1        = forcey/mass1
+    accy2        = forcex/mass2
+    vecacc1      = np.array([accx1, accy1])
+    vecacc2      = np.array([accx2, accy2])
+    
+    #return values obtained
+    return vecacc1, vecacc2
+
 def positfixer(particlelist):
     """
     POSITFIXER! A solução para todas as suas partículas criadas
@@ -318,8 +347,12 @@ def forcesum(*args):
         Vetor Resultante.
     """
     resultvec = np.array([0,0])
+    i = 0
     for forcevec in args:
+        i = i + 1 
+        #print("force", i, ":", forcevec) #verbose. For debugging purposes :D
         resultvec = resultvec + np.array(forcevec)
+    #print("Totalforce:", resultvec)
     return resultvec
 
 def getparticleposits(particlelist, time, umamola):
@@ -329,16 +362,18 @@ def getparticleposits(particlelist, time, umamola):
     for i in range(0, updates):
         zetta = -1
         print("running for timeframe", i)
+        radiuscheck(particlelist)
         for particle in particlelist:
             #print("running for timeframe", i)
             zetta = zetta + 1
             xposits[zetta].append(particle.xposit)
             yposits[zetta].append(particle.yposit)
-            radiuscheck(particlelist)                       #checa colisões
+            #radiuscheck(particlelist)                       #checa colisões
             restauringforce = umamola.restaurador(particle) #checa elasticidade de centro
             particle.updateacc(
-                forcesum(particle.gacc,
+                forcesum(
                          restauringforce
+                         
                          )
                 )
             particle.updatecondition()
@@ -378,5 +413,6 @@ def update(i, xposits, yposits):
 
     
 #anim = FuncAnimation (fig, update, frames= range(1, int(20/dt), 200), fargs = (scatter, ydata, xdata), interval = 1, blit=True)
-anim = FuncAnimation (fig, update, frames = range(1, int(runtime/dt)), fargs = (xdata, ydata), interval = 1, blit=False)
+anim = FuncAnimation (fig, update, frames = range(1, int(runtime/dt), 100), fargs = (xdata, ydata), interval = 1, blit=False)
 plt.show()
+anim.save('particlemove.gif', writer='imagemagick')
