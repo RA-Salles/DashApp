@@ -5,6 +5,13 @@ Created on Sat May 28 09:45:43 2022
 @author: Locust
 """
 
+"""
+Avisos Gerais
+1. As posições são pré computadas
+2. Colocar o rng como uma variável local causa partículas literalmente iguais 
+se você usar seeds.
+"""
+
 import numpy as np
 from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
@@ -24,6 +31,7 @@ class particula:
     ptype   = int()
     mass    = float()
     radius  = float()
+    charge  = float()
     gpos    = list()
     gvel    = list()
     gpoint  = int()
@@ -34,23 +42,25 @@ class particula:
         #except:
         #    self.rng     = np.random.default_rng(seed=85420)
         #self.rng     = np.random.default_rng(seed=85420)
-        self.xposit   = (21 - (-20)) * rng.random() + (-20)
-        self.yposit   = (21 - (-20)) * rng.random() + (-20)
+        self.xposit   = (90 - (-90)) * rng.random() + (-90)
+        self.yposit   = (90 - (-90)) * rng.random() + (-90)
         self.xvel     = (2 - (-2)) * rng.random() + (-2)
         self.yvel     = (2 - (-2)) * rng.random() + (-2)
-        #self.xacc     = (5 - (-5)) * rng.random() + (-5)
-        #self.yacc     = (5 - (-5)) * rng.random() + (-5)
-        self.xacc     = 0
-        self.yacc     = 0
+        self.xacc     = (5 - (-5)) * rng.random() + (-5)
+        self.yacc     = (5 - (-5)) * rng.random() + (-5)
+        #self.xacc     = 0
+        #self.yacc     = 0
         self.xfposit  = self.xposit + self.xvel * self.dt
         self.yfposit  = self.yposit + self.yvel * self.dt
         self.ptype    = rng.integers(low = 1, high = 5)
-        self.mass     = float(self.ptype)
-        self.radius   = (5 - (1)) * rng.random() + (1)
+        self.mass     = 2*(float(self.ptype))
+        self.radius   = (1 - (2)) * rng.random() + (2) #Raios massivamente aumentados para garantir ao menos algumas colisões visíveis
+        self.charge   = (5 - (-5)) * rng.random() + (-5)
         self.gpos     = [self.xposit, self.yposit]
         self.gfpos    = [self.xfposit, self.yfposit]
         self.gvel     = [self.xvel, self.yvel]
         self.gacc     = [self.xacc, self.yacc]
+        self.ogacc     = self.gacc
         self.updategrid()
         
     def updategrid(self):
@@ -70,15 +80,16 @@ class particula:
             self.yvel = -self.yvel
             
     def updatecondition(self):
+        self.xvel    = self.xvel + self.xacc * self.dt
+        self.yvel    = self.yvel + self.yacc * self.dt
         self.xposit  = self.xposit + self.xvel * self.dt
         self.yposit  = self.yposit + self.yvel * self.dt
         self.xfposit = self.xposit + self.xvel * self.dt
         self.yfposit = self.yposit + self.yvel * self.dt 
-        self.xvel    = self.xvel + self.xacc * self.dt
-        self.yvel    = self.yvel + self.yacc * self.dt
         self.gpos    = np.array([self.xposit, self.yposit])
         self.gfpos   = np.array([self.xfposit, self.yfposit])
         self.gvel    = np.array([self.xvel, self.yvel])
+        self.updateacc(self.ogacc)
         self.wallcolide()
         self.updategrid()
 
@@ -173,7 +184,7 @@ def norma(vec1, vec2):
     dist = np.sqrt(vec3[0]**2 + vec3[1]**2)
     return dist
 
-def colisor(part1, part2):
+def colisor(plist, i, j):
     """
     Parameters
     ----------
@@ -194,9 +205,9 @@ def colisor(part1, part2):
 
     """
     #Constantes Iniciais
-    x1, x2       = np.array(part1.gfpos), np.array(part2.gfpos)
-    vel1, vel2   = np.array(part1.gvel) , np.array(part2.gvel)
-    mass1, mass2 = part1.mass , part2.mass
+    x1, x2       = np.array(plist[i].gfpos), np.array(plist[j].gfpos)
+    vel1, vel2   = np.array(plist[i].gvel) , np.array(plist[j].gvel)
+    mass1, mass2 = plist[i].mass , plist[j].mass
     mass_sum     = mass1 + mass2
     
     #Cálculos em partes
@@ -216,8 +227,10 @@ def colisor(part1, part2):
     lvel2 = vel2 - konst2*dotp2/norm2*diff2
     
     #Assignação de novos valores às partículas
-    part1.vel1 = lvel1
-    part2.vel2 = lvel2
+    print("part1 vel goes from", vel1, "to", lvel1)
+    print("part2 vel goes from", vel2, "to", lvel2)
+    plist[i].updategvel(lvel1)
+    plist[j].updategvel(lvel2)
         
 def distget(x1, x2):
     dist = np.sqrt((x1[0] - x2[0])**2 + (x1[1] - x2[1])**2)
@@ -247,14 +260,14 @@ def radiuscheck(plist): #verifica se algum par de posits está na dangerzone; gu
             if distget(plist[i].gfpos, plist[j].gfpos) <= cdist: #If distance bet. fpositions is 
                 colparts.append(ctuple1)                         #is lesser or equal than sum of  
                 colparts.append(ctuple2)                         #radius, collision is a thing.
-                colisor(plist[i], plist[j])  
+                colisor(plist, i, j)  
                 #print("Collision done! Parts", i, "and", j, "just colided!")
             #else:
                 #print("collisionavoided, fetching next pair")
 
 def gravidade(part1, part2):
     #def vals
-    kgrav = float() #TASK 2
+    kgrav = 6.67430*10**-11 #TASK 2
     vec1, vec2   = part1.gpos, part2.gpos
     mass1, mass2 = part1.mass, part2.mass
     
@@ -272,6 +285,92 @@ def gravidade(part1, part2):
     
     #return values obtained
     return vecacc1, vecacc2
+
+def gravityman(plist): #Para todo par de partículas, calcula interaãço gravitacional. Gera 1 lista para cada partícula
+    forces = [list() for particle in plist]
+    colparts = list() 
+    zetta = -1
+    for i in range(len(plist)):
+        j = i + 1
+        for j in range(len(plist)):
+            zetta = zetta + 1
+            cdist   = plist[i].radius + plist[j].radius
+            ctuple1 = (i, j)
+            ctuple2 = (j, i)
+            if plist[i].gpoint != plist[i].gpoint: #too far away to ever influence gra
+                colparts.append(ctuple1)
+                #colparts[zetta] = tuple1
+                colparts.append(ctuple2)
+                continue
+            if i == j: #jumps same particle collision
+                #print("samepartcol. jumped")
+                continue
+            if ctuple1 in colparts or ctuple2 in colparts:
+                #print("alreadydone. jumped")
+                continue
+            if distget(plist[i].gfpos, plist[j].gfpos) <= 10*cdist: #If distance between future positions
+                forcei, forcej = gravidade(plist[i], plist[j])     #is lesser than this, gravity is suficiently strong(?)
+                forces[i].append(forcei)
+                forces[j].append(forcej)
+                #print("Collision done! Parts", i, "and", j, "just colided!")
+            #else:
+                #print("collisionavoided, fetching next pair")
+    return forces
+
+def eletricidade(part1, part2): #É literalmente a gravidade reaproveitada. Simplesmente resolve para forças negativas e positivas
+    #def vals
+    kgrav = 8.987551*10**9 #TASK 2
+    vec1, vec2   = part1.gpos, part2.gpos
+    mass1, mass2 = part1.charge, part2.charge # AQUI. AQUI É A ÚNICA COISA QUE MUDA!
+    
+    #calcs
+    distx        = abs(vec1[0] - vec2[0])
+    disty        = abs(vec1[1] - vec2[1])
+    forcex       = (mass1*mass2*kgrav)/distx**2
+    forcey       = (mass1*mass2*kgrav)/disty**2
+    accx1        = forcex/mass1
+    accx2        = forcex/mass2
+    accy1        = forcey/mass1
+    accy2        = forcex/mass2
+    vecacc1      = np.array([accx1, accy1])
+    vecacc2      = np.array([accx2, accy2])
+    
+    #return values obtained
+    return vecacc1, vecacc2
+
+def electroman(plist): #Para todo par de partículas, calcula interação elétrica. 
+    forces = [list() for particle in plist]
+    colparts = list() 
+    zetta = -1
+    for i in range(len(plist)):
+        j = i + 1
+        for j in range(len(plist)):
+            zetta = zetta + 1
+            cdist   = plist[i].radius + plist[j].radius
+            ctuple1 = (i, j)
+            ctuple2 = (j, i)
+            if plist[i].gpoint != plist[i].gpoint: #too far away to ever influence gra
+                colparts.append(ctuple1)
+                #colparts[zetta] = tuple1
+                colparts.append(ctuple2)
+                continue
+            if i == j: #jumps same particle collision
+                #print("samepartcol. jumped")
+                continue
+            if ctuple1 in colparts or ctuple2 in colparts:
+                #print("alreadydone. jumped")
+                continue
+            if distget(plist[i].gfpos, plist[j].gfpos) <= 10*cdist: #If distance bet. fpositions is 
+                colparts.append(ctuple1)                         #is lesser or equal than sum of  
+                colparts.append(ctuple2)                         #radius, collision is a thing.
+                forcei, forcej = gravidade(plist[i], plist[j])  
+                forces[i].append(forcei)
+                forces[j].append(forcej)
+                #print("Collision done! Parts", i, "and", j, "just colided!")
+            #else:
+                #print("collisionavoided, fetching next pair")
+    return forces
+
 
 def positfixer(particlelist):
     """
@@ -334,7 +433,7 @@ def positfixer(particlelist):
     else:
         print("posições concertadas com sucesso!")
 
-def forcesum(*args): 
+def forcesum(forcelist): 
     """
     Parameters
     ----------
@@ -348,71 +447,291 @@ def forcesum(*args):
     """
     resultvec = np.array([0,0])
     i = 0
-    for forcevec in args:
+    for forcevec in forcelist:
         i = i + 1 
         #print("force", i, ":", forcevec) #verbose. For debugging purposes :D
         resultvec = resultvec + np.array(forcevec)
     #print("Totalforce:", resultvec)
     return resultvec
 
-def getparticleposits(particlelist, time, umamola):
-    xposits = [list() for _ in particlelist]
-    yposits = [list() for _ in particlelist]
-    updates = int(time/particlelist[0].dt)
-    for i in range(0, updates):
-        zetta = -1
-        print("running for timeframe", i)
-        radiuscheck(particlelist)
-        for particle in particlelist:
-            #print("running for timeframe", i)
-            zetta = zetta + 1
-            xposits[zetta].append(particle.xposit)
-            yposits[zetta].append(particle.yposit)
-            #radiuscheck(particlelist)                       #checa colisões
-            restauringforce = umamola.restaurador(particle) #checa elasticidade de centro
-            particle.updateacc(
-                forcesum(
-                         restauringforce
-                         
-                         )
-                )
-            particle.updatecondition()
-    return xposits, yposits
-
-centromola = mola()
-numparticles = 5
-particlelist = list()
-for i in range(numparticles):
-    particlelist.append(particula())
-
-positfixer(particlelist)
-
-runtime = 20
-#dt = 0.001
-dt = 0.001
-fig = plt.figure()
-ax = fig.add_subplot()
-
-xdata, ydata = getparticleposits(particlelist, runtime, centromola)
-
-def update(i, xposits, yposits):
-    ax.clear()
-    xintime = list()
-    yintime = list()
-    for xposit, yposit in zip(xposits, yposits):  #goes through lines and particles
-          xintime.append(xposit[i]) # Contem posições para tempo determinado
-          yintime.append(yposit[i])
-    ax.set(xlim=(-100, 100))                                 
-    ax.set(ylim=(-100, 100))
-    #for i in range(len(xintime)): #Para colorir por tipo, adaptar essa parte da função para detectar tipo.
-    #    ax.scatter(xintime[i], yintime[i])
-    ax.scatter(xintime, yintime)
-    #xintime.clear()
-    #yintime.clear()
+def resist(part, rand): #ALTERADO PARA UMA ÚNICA PARTÍCULA! DRAG AGE SOB UMA PARTÍCULA POR VEZ, QUE NEM A MOLA!
+    velx = part.xvel
+    vely = part.yvel
+    mass = part.mass
+    konstantx = (0.1 - (1)) * rand.random() + 1
+    konstanty = (0.1 - (1)) * rand.random() + 1
     
+    if velx > 0 :
+        forcex = konstantx * velx**2
+        accx   = -1 * forcex/mass
+    else:
+        forcex = konstantx * velx**2
+        accx   = forcex/mass
+        
+    if vely > 0 :
+        forcey = konstanty * vely**2
+        accy   = -1 * forcey/mass
+    else:
+        forcey = konstanty * vely**2
+        accy   = forcey/mass
+    vecacc = np.array([accx, accy])
+    #print("resistforce:", vecacc)
+    return vecacc
 
-    
-#anim = FuncAnimation (fig, update, frames= range(1, int(20/dt), 200), fargs = (scatter, ydata, xdata), interval = 1, blit=True)
-anim = FuncAnimation (fig, update, frames = range(1, int(runtime/dt), 100), fargs = (xdata, ydata), interval = 1, blit=False)
-plt.show()
-anim.save('particlemove.gif', writer='imagemagick')
+def energyget(plist):
+    energy = float()
+    for particle in plist:
+        scalarvel = np.dot(particle.xvel, particle.yvel)
+        energy = energy +  1/2 * particle.mass * scalarvel**2
+    return energy
+
+rand = np.random.default_rng(123456)
+
+print("Escolha tipo de simulação: \n\
+      1. colisão \n\
+      2. colisão + mola \n\
+      3. colisão + mola + força gravitacional e força elétrica \n\
+      4. TODAS\n")
+try:
+    tipodesimulacao = int(input())
+except:
+    print("Valor inválido!")
+    quit()
+print("Escolha o tipo de output:\n",
+      "1. Particulas no tempo\n",
+      "2. Energia Cinética no tempo\n"
+      )
+try:
+    tipodegrafico = int(input())
+except:
+    print("Valor inválido!")
+    quit()
+
+
+if tipodesimulacao == 4:
+    def getparticleposits(particlelist, time, umamola):
+        xposits = [list() for _ in particlelist]
+        yposits = [list() for _ in particlelist]
+        energyintime = [[],[]]
+        updates = int(time/particlelist[0].dt)
+        for i in range(0, updates):
+            energyintime[0].append(energyget(particlelist))
+            energyintime[1].append(i)
+            gravitationforces = list()
+            zetta = -1
+            print("running for timeframe", i)
+            radiuscheck(particlelist)
+            gravitationforces = gravityman(particlelist)
+            electroforces     = electroman(particlelist)
+            for particle in particlelist:
+                zetta = zetta + 1
+                xposits[zetta].append(particle.xposit)
+                yposits[zetta].append(particle.yposit)
+                allforce = gravitationforces[zetta]
+                allforce.append(resist(particle, rand))
+                for item in electroforces[zetta]:
+                    allforce.append(item)
+                allforce.append(umamola.restaurador(particle))
+                allforce.append(particle.gacc) #NAO TIRAR DO COMENTARIO. GERA FORÇA PERPETUA E CRESCENTE; VELOCIDADES ILEGÍVEIS ABSURDAS! Dor!
+                particle.updateacc(
+                    forcesum(
+                             allforce # :)
+                             )
+                    )
+                particle.updatecondition()
+        return xposits, yposits, energyintime
+
+if tipodesimulacao == 3:
+    def getparticleposits(particlelist, time, umamola):
+        xposits = [list() for _ in particlelist]
+        yposits = [list() for _ in particlelist]
+        energyintime = [[],[]]
+        updates = int(time/particlelist[0].dt)
+        for i in range(0, updates):
+            energyintime[0].append(energyget(particlelist))
+            energyintime[1].append(i)
+            gravitationforces = list()
+            zetta = -1
+            print("running for timeframe", i)
+            radiuscheck(particlelist)
+            gravitationforces = gravityman(particlelist)
+            electroforces     = electroman(particlelist)
+            for particle in particlelist:
+                zetta = zetta + 1
+                xposits[zetta].append(particle.xposit)
+                yposits[zetta].append(particle.yposit)
+                allforce = gravitationforces[zetta]
+                #allforce.append(resist(particle, rand))
+                for item in electroforces[zetta]:
+                    allforce.append(item)
+                allforce.append(umamola.restaurador(particle))
+                allforce.append(particle.gacc) #NAO TIRAR DO COMENTARIO. GERA FORÇA PERPETUA E CRESCENTE; VELOCIDADES ILEGÍVEIS ABSURDAS! Dor!
+                particle.updateacc(
+                    forcesum(
+                             allforce # :)
+                             )
+                    )
+                particle.updatecondition()
+        return xposits, yposits, energyintime
+
+if tipodesimulacao == 2:
+    def getparticleposits(particlelist, time, umamola):
+        xposits = [list() for _ in particlelist]
+        yposits = [list() for _ in particlelist]
+        energyintime = [[],[]]
+        updates = int(time/particlelist[0].dt)
+        for i in range(0, updates):
+            energyintime[0].append(energyget(particlelist))
+            energyintime[1].append(i)
+            gravitationforces = list()
+            zetta = -1
+            print("running for timeframe", i)
+            radiuscheck(particlelist)
+            #gravitationforces = gravityman(particlelist)
+            #electroforces     = electroman(particlelist)
+            for particle in particlelist:
+                zetta = zetta + 1
+                xposits[zetta].append(particle.xposit)
+                yposits[zetta].append(particle.yposit)
+                allforce = list()
+                #allforce.append(resist(particle, rand))
+                #for item in electroforces[zetta]:
+                #    allforce.append(item)
+                allforce.append(umamola.restaurador(particle))
+                #allforce.append(particle.gacc) #NAO TIRAR DO COMENTARIO. GERA FORÇA PERPETUA E CRESCENTE; VELOCIDADES ILEGÍVEIS ABSURDAS! Dor!
+                particle.updateacc(
+                    forcesum(
+                             allforce # :)
+                             )
+                    )
+                particle.updatecondition()
+        return xposits, yposits, energyintime
+
+if tipodesimulacao == 1:
+    def getparticleposits(particlelist, time, umamola):
+        xposits = [list() for _ in particlelist]
+        yposits = [list() for _ in particlelist]
+        energyintime = [[],[]]
+        updates = int(time/particlelist[0].dt)
+        for i in range(0, updates):
+            energyintime[0].append(energyget(particlelist))
+            energyintime[1].append(i)
+            #gravitationforces = list()
+            zetta = -1
+            print("running for timeframe", i)
+            radiuscheck(particlelist)
+            #gravitationforces = gravityman(particlelist)
+            #electroforces     = electroman(particlelist)
+            for particle in particlelist:
+                zetta = zetta + 1
+                xposits[zetta].append(particle.xposit)
+                yposits[zetta].append(particle.yposit)
+                #allforce = list()
+                #allforce.append(resist(particle, rand))
+                #for item in electroforces[zetta]:
+                #    allforce.append(item)
+                #allforce.append(umamola.restaurador(particle))
+                #allforce.append(particle.gacc) #NAO TIRAR DO COMENTARIO. GERA FORÇA PERPETUA E CRESCENTE; VELOCIDADES ILEGÍVEIS ABSURDAS! Dor!
+                #particle.updateacc(
+                #    forcesum(
+                #             allforce # :)
+                #             )
+                #    )
+                particle.updatecondition()
+        return xposits, yposits, energyintime
+
+
+
+if __name__ == '__main__':
+    if tipodegrafico == 1:
+        print("Insira número de partículas desejado\n")
+        try:
+            numparticles = int(input())
+        except:
+            print("valor inválido!")
+            quit()
+        centromola = mola()
+        #numparticles = 10
+        particlelist = list()
+        for i in range(numparticles):
+            particlelist.append(particula())
+        
+        positfixer(particlelist)
+        
+        print("Insira tempo de rodagem desejado\n")
+        try:
+            runtime = int(input())
+        except:
+            print("valor inválido!")
+            quit()
+        #runtime = 20
+        #dt = 0.001
+        dt = 0.001
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        
+        xdata, ydata, kinetic = getparticleposits(particlelist, runtime, centromola)
+        
+        def update(i, xposits, yposits):
+            ax.clear()
+            xintime = list()
+            yintime = list()
+            for xposit, yposit in zip(xposits, yposits):  #goes through lines and particles
+                  xintime.append(xposit[i]) # Contem posições para tempo determinado
+                  yintime.append(yposit[i])
+            ax.set(xlim=(-100, 100))                                 
+            ax.set(ylim=(-100, 100))
+            #for i in range(len(xintime)): #Para colorir por tipo, adaptar essa parte da função para detectar tipo.
+            #    ax.scatter(xintime[i], yintime[i], s = 20.0)
+            ax.scatter(xintime, yintime, s = 30)
+            #xintime.clear()
+            #yintime.clear()
+            
+        
+            
+        #anim = FuncAnimation (fig, update, frames= range(1, int(20/dt), 200), fargs = (scatter, ydata, xdata), interval = 1, blit=True)
+        anim = FuncAnimation (fig, update, frames = range(1, int(runtime/dt), 100), fargs = (xdata, ydata), interval = 1, blit=False)
+        plt.show()
+        print("Você gostaria de salvar essa animação?\n",
+              "1. Sim!\n",
+              "2. Não!")
+        try:
+            decis = int(input())
+        except:
+            print("valor inválido!")
+            quit()
+        if decis == 1:
+            anim.save('particlemove.gif', writer='imagemagick')
+    else:
+        print("Insira número de partículas desejado\n")
+        try:
+            numparticles = int(input())
+        except:
+            print("valor inválido!")
+            quit()
+        centromola = mola()
+        #numparticles = 10
+        particlelist = list()
+        for i in range(numparticles):
+            particlelist.append(particula())
+        
+        positfixer(particlelist)
+        
+        print("Insira tempo de rodagem desejado\n")
+        try:
+            runtime = int(input())
+        except:
+            print("valor inválido!")
+            quit()
+        #runtime = 20
+        #dt = 0.001
+        dt = 0.001
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        
+        xdata, ydata, kinetic = getparticleposits(particlelist, runtime, centromola)
+        
+        ax.plot(kinetic[1], kinetic[0])
+        plt.show()
+        
+        
