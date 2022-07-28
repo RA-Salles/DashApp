@@ -55,11 +55,9 @@ class particula:
         self.xfposit = self.xposit + self.xvel * self.dt
         self.yfposit = self.yposit + self.yvel * self.dt
         self.ptype = rng.integers(low=1, high=5)
-        self.mass = 2 * (float(self.ptype))
-        self.radius = (1 - (2)) * rng.random() + (
-            2
-        )  # Raios massivamente aumentados para garantir ao menos algumas colisões visíveis
-        self.charge = (20 - (-20)) * rng.random() + (-20)
+        self.mass = 1000000000 * 5 * (float(self.ptype))
+        self.radius = (1 - (2)) * rng.random() + (2)  # Raios massivamente aumentados para garantir ao menos algumas colisões visíveis
+        self.charge = (0.0000000000001 - (-0.000000000001)) * rng.random() + (-0.000000000001) # Numeros diminuídos. A constante de coulomb é medonha e gera forças absurdas.
         self.gpos = [self.xposit, self.yposit]
         self.gfpos = [self.xfposit, self.yfposit]
         self.gvel = [self.xvel, self.yvel]
@@ -132,7 +130,7 @@ class particula:
         return xposits, yposits
 
 
-class mola:
+class mola: #NOMINAL
     k = float()
 
     def __init__(self):
@@ -142,8 +140,8 @@ class mola:
         # self.centery   = (16 - 15) * self.rng.random() + 15
         self.centerx = 0
         self.centery = 0
-        self.konstantx = (30 - 15) * self.rng.random() + 15
-        self.konstanty = (30 - 15) * self.rng.random() + 15
+        self.konstantx = (10 - (5)) * self.rng.random() + 5
+        self.konstanty = (10 - (5)) * self.rng.random() + 5
         # self.konstantx = (5 - 1) * self.rng.random() + 1
         # self.konstanty = (5 - 1) * self.rng.random() + 1
         # self.konstantx =  self.rng.random()
@@ -184,13 +182,13 @@ class mola:
         return vecacc
 
 
-def norma(vec1, vec2):
+def norma(vec1, vec2): #NOMINAL
     vec3 = np.array(vec1) - np.array(vec2)
     dist = np.sqrt(vec3[0] ** 2 + vec3[1] ** 2)
     return dist
 
 
-def colisor(plist, i, j):
+def colisor(plist, i, j): #NOMINAL
     """
     Parameters
     ----------
@@ -263,13 +261,13 @@ def radiuscheck(
                 # colparts[zetta] = tuple1
                 colparts.append(ctuple2)
                 continue
-            if i == j:  # jumps same particle collision
+            elif i == j:  # jumps same particle collision
                 # print("samepartcol. jumped")
                 continue
-            if ctuple1 in colparts or ctuple2 in colparts:
+            elif ctuple1 in colparts or ctuple2 in colparts:
                 # print("alreadydone. jumped")
                 continue
-            if (
+            elif (
                 distget(plist[i].gfpos, plist[j].gfpos) <= cdist
             ):  # If distance bet. fpositions is
                 colparts.append(ctuple1)  # is lesser or equal than sum of
@@ -280,24 +278,48 @@ def radiuscheck(
             # print("collisionavoided, fetching next pair")
 
 
-def gravidade(part1, part2):
+def gravidade(part1, part2): #possivel ponto de erro
     # def vals
-    kgrav = 6.67430 * 10 ** -11  # TASK 2
+    kgrav = 6.67430 * (10 ** -11)  # TASK 2
     vec1, vec2 = part1.gpos, part2.gpos
     mass1, mass2 = part1.mass, part2.mass
 
     # calcs
-    distx = abs(vec1[0] - vec2[0])
-    disty = abs(vec1[1] - vec2[1])
-    forcex = (mass1 * mass2 * kgrav) / distx ** 2
-    forcey = (mass1 * mass2 * kgrav) / disty ** 2
-    accx1 = forcex / mass1
-    accx2 = forcex / mass2
-    accy1 = forcey / mass1
-    accy2 = forcex / mass2
+    distx = vec1[0] - vec2[0]
+    disty = vec1[1] - vec2[1]
+    if distx == 0:
+        forcex = 0
+    elif distx != 0:
+        forcex = (mass1 * mass2 * kgrav) / distx ** 2
+    if disty == 0:
+        forcey = 0
+    elif disty != 0:
+        forcey = (mass1 * mass2 * kgrav) / disty ** 2
+    gforce = np.array([forcex, forcey])
+    if vec1[0] > vec2[0] and vec1[1] > vec2[1]:
+        accx1 = -forcex / mass1
+        accx2 = forcex / mass2
+        accy1 = -forcey / mass1
+        accy2 = forcey / mass2
+    if vec1[0] > vec2[0] and vec1[1] < vec2[1]:    
+        accx1 = -forcex / mass1
+        accx2 = forcex / mass2
+        accy1 = forcey / mass1
+        accy2 = -forcey / mass2
+    if vec1[0] < vec2[0] and vec1[1] < vec2[1]:
+        accx1 = forcex / mass1
+        accx2 = -forcex / mass2
+        accy1 = forcey / mass1
+        accy2 = -forcey / mass2
+    if vec1[0] < vec2[0] and vec1[1] > vec2[1]:
+        accx1 = forcex / mass1
+        accx2 = -forcex / mass2
+        accy1 = -forcey / mass1
+        accy2 = forcey / mass2
     vecacc1 = np.array([accx1, accy1])
     vecacc2 = np.array([accx2, accy2])
-
+    #print("particle1 acc", vecacc1)
+    #print("particle2 acc", vecacc2)
     # return values obtained
     return vecacc1, vecacc2
 
@@ -312,7 +334,7 @@ def gravityman(
         j = i + 1
         for j in range(len(plist)):
             zetta = zetta + 1
-            cdist = plist[i].radius + plist[j].radius
+            #cdist = plist[i].radius + plist[j].radius
             ctuple1 = (i, j)
             ctuple2 = (j, i)
             if plist[i].gpoint != plist[i].gpoint:  # too far away to ever influence gra
@@ -320,23 +342,23 @@ def gravityman(
                 # colparts[zetta] = tuple1
                 colparts.append(ctuple2)
                 continue
-            if i == j:  # jumps same particle collision
+            elif i == j:  # jumps same particle collision
                 # print("samepartcol. jumped")
                 continue
-            if ctuple1 in colparts or ctuple2 in colparts:
+            elif ctuple1 in colparts or ctuple2 in colparts:
                 # print("alreadydone. jumped")
                 continue
-            if (
-                distget(plist[i].gfpos, plist[j].gfpos) <= 10 * cdist
-            ):  # If distance between future positions
+            #elif distget(plist[i].gfpos, plist[j].gfpos) <= 10 * cdist:  # If distance between future positions greater than radius sum, interaction is insignificant
+            else: #INTERACTS ALL PARTICLES GENERATING N*N FORCES!
                 forcei, forcej = gravidade(
                     plist[i], plist[j]
-                )  # is lesser than this, gravity is suficiently strong(?)
+                ) 
                 forces[i].append(forcei)
                 forces[j].append(forcej)
-                # print("Collision done! Parts", i, "and", j, "just colided!")
+                #print("gravity done! Parts", i, "and", j, "just gravitated!")
             # else:
             # print("collisionavoided, fetching next pair")
+    print(forces)
     return forces
 
 
@@ -351,21 +373,29 @@ def eletricidade(
     # calcs
     distx = abs(vec1[0] - vec2[0])
     disty = abs(vec1[1] - vec2[1])
+    #forcex = abs((mass1 * mass2 * kgrav) / distx ** 2)
+    #forcey = abs((mass1 * mass2 * kgrav) / disty ** 2)
     forcex = (mass1 * mass2 * kgrav) / distx ** 2
     forcey = (mass1 * mass2 * kgrav) / disty ** 2
-    if mass1 > 0 and mass2 > 0:
-        accx1 = -forcex / mass1
-        accx2 = -forcex / mass2
-        accy1 = -forcey / mass1
-        accy2 = -forcex / mass2
-    else:
-        accx1 = forcex / mass1
-        accx2 = forcex / mass2
-        accy1 = forcey / mass1
-        accy2 = forcex / mass2
+    #if mass1 > 0 and mass2 > 0 or mass1 < 0 and mass2 < 0:
+    #    accx1 = -forcex / mass1
+    #    accx2 = -forcex / mass2
+    #    accy1 = -forcey / mass1
+    #    accy2 = -forcex / mass2
+    #else:
+    #    accx1 = forcex / mass1
+    #    accx2 = forcex / mass2
+    #    accy1 = forcey / mass1
+    #    accy2 = forcex / mass2
+    accx1 = forcex / mass1
+    accx2 = forcex / mass2
+    accy1 = forcey / mass1
+    accy2 = forcey / mass2
     vecacc1 = np.array([accx1, accy1])
     vecacc2 = np.array([accx2, accy2])
-
+    
+    #print("force vector1", vecacc1 )
+    #print("force vector2", vecacc2 )
     # return values obtained
     return vecacc1, vecacc2
 
@@ -381,7 +411,7 @@ def electroman(plist):  # Para todo par de partículas, calcula interação elé
             cdist = plist[i].radius + plist[j].radius
             ctuple1 = (i, j)
             ctuple2 = (j, i)
-            if plist[i].gpoint != plist[i].gpoint:  # too far away to ever influence gra
+            if plist[i].gpoint != plist[i].gpoint:  # too far away to ever electro influence
                 colparts.append(ctuple1)
                 # colparts[zetta] = tuple1
                 colparts.append(ctuple2)
@@ -397,10 +427,10 @@ def electroman(plist):  # Para todo par de partículas, calcula interação elé
             ):  # If distance bet. fpositions is
                 colparts.append(ctuple1)  # is lesser or equal than sum of
                 colparts.append(ctuple2)  # radius, collision is a thing.
-                forcei, forcej = gravidade(plist[i], plist[j])
+                forcei, forcej = eletricidade(plist[i], plist[j])
                 forces[i].append(forcei)
                 forces[j].append(forcej)
-                # print("Collision done! Parts", i, "and", j, "just colided!")
+                print("electro done! Parts", i, "and", j, "just interacted!")
             # else:
             # print("collisionavoided, fetching next pair")
     return forces
@@ -640,7 +670,7 @@ elif tipodesimulacao == 2:
                 # for item in electroforces[zetta]:
                 #    allforce.append(item)
                 # allforce.append(umamola.restaurador(particle))
-                allforce.append(particle.gacc)  # NAO TIRAR DO COMENTARIO. GERA FORÇA PERPETUA E CRESCENTE; VELOCIDADES ILEGÍVEIS ABSURDAS! Dor!
+                #allforce.append(particle.gacc)  # NAO TIRAR DO COMENTARIO. GERA FORÇA PERPETUA E CRESCENTE; VELOCIDADES ILEGÍVEIS ABSURDAS! Dor!
                 particle.updateacc(forcesum(allforce))  # :)
                 particle.updatecondition()
         return xposits, yposits, energyintime
@@ -730,7 +760,7 @@ if __name__ == "__main__":
         anim = FuncAnimation(
             fig,
             update,
-            frames=range(1, int(runtime / dt), 100),
+            frames=range(1, int(runtime / dt), 25),
             fargs=(xdata, ydata),
             interval=1,
             blit=False,
@@ -776,3 +806,24 @@ if __name__ == "__main__":
 
         ax.plot(kinetic[1], kinetic[0])
         plt.show()
+
+else:
+    import pandas as pd
+    numparticles = 20
+    centromola = mola()
+    particlelist = list()
+    for i in range(numparticles):
+        particlelist.append(particula())
+    positfixer(particlelist)
+    runtime = 20
+    dt = 0.001
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    xdata, ydata, kinetic = getparticleposits(particlelist, runtime, centromola)
+    pddict = {'energydata': kinetic[0],'timeframe':kinetic[1]}
+    print("selectnameforcsv: ")
+    name = input()
+    df = pd.DataFrame(pddict)
+    df.tocsv(name)
+    
+    
